@@ -46,9 +46,7 @@ def estimate_savings_percent_model(original_consumption_tpd, saving_percent, fue
     cost_savings = annual_savings_tonnes * fuel_price_per_tonne
     return daily_savings, annual_savings_tonnes, cost_savings
 
-# === Inputs ===
-st.title("Battery Efficiency & IMO Performance Calculator")
-
+# Inputs
 battery_energy_kwh = st.number_input("Battery Energy (kWh/day)", value=1200)
 sfoc_tonnes_per_kwh = st.number_input("SFOC (tonnes/kWh)", value=0.00022, format="%f")
 fuel_energy_density = st.number_input("Fuel Energy Density (MJ/tonne)", value=42700)
@@ -71,17 +69,23 @@ eexi_ref = st.number_input("IMO Reference EEXI", value=16.5)
 saving_percent = st.slider("Fuel Saving Percentage (Estimate)", min_value=0, max_value=20, value=10)
 original_consumption_tpd = st.number_input("Original Fuel Consumption (tonnes/day)", value=104.0)
 
-fuel_saved_tpd = 1.28  # Fixed based on auxiliary savings (10%)
+# Input values
+fuel_saved_tpd = 1.28
+initial_fuel_consumed_annual = 104 * 300  # 104 t/day baseline
+new_fuel_consumed_annual = initial_fuel_consumed_annual - (fuel_saved_tpd * 300)
 
-# === Calculations ===
 if st.button("Calculate Results"):
     fuel_saved_tonnes, energy_saved_mj, co2_saved_tonnes, eff_ratio = calculate_bess_efficiency(
         battery_energy_kwh, sfoc_tonnes_per_kwh, fuel_energy_density, co2_factor)
-    adjusted_fuel_consumption = fuel_consumed_annual - (fuel_saved_tpd * 300)
-    cii = calculate_cii(adjusted_fuel_consumption, co2_factor, dwt, distance_nm)
-    cii_rating = get_cii_rating(cii)
+
+    initial_cii = calculate_cii(initial_fuel_consumed_annual, co2_factor, dwt, distance_nm)
+    new_cii = calculate_cii(new_fuel_consumed_annual, co2_factor, dwt, distance_nm)
+    cii_rating_before = get_cii_rating(initial_cii)
+    cii_rating_after = get_cii_rating(new_cii)
+
     annual_savings, payback = calculate_roi(fuel_saved_tpd, fuel_price, capex, opex)
     eexi, compliance = calculate_eexi(p_me, sfoc_me, cf_eexi, v_ref, dwt, eexi_ref)
+
     daily_savings, annual_savings_tonnes, cost_savings = estimate_savings_percent_model(
         original_consumption_tpd, saving_percent, fuel_price)
 
@@ -92,13 +96,14 @@ if st.button("Calculate Results"):
     st.write(f"Efficiency Ratio: {eff_ratio:.2f} MJ/MJ")
 
     st.subheader("Carbon Intensity Indicator (CII)")
-    st.write(f"Attained CII: {cii:.6f} gCO₂/DWT·nm")
-    st.write(f"Estimated Rating: {cii_rating}")
+    st.write(f"Initial CII: {initial_cii:.6f} gCO₂/DWT·nm → Rating: {cii_rating_before}")
+    st.write(f"Post-BESS CII: {new_cii:.6f} gCO₂/DWT·nm → Rating: {cii_rating_after}")
 
     st.subheader("Return on Investment (ROI)")
     st.write(f"Annual Net Savings (after OPEX): ${annual_savings:,.2f}")
     if payback != float('inf'):
         st.write(f"Payback Period: {payback:.2f} years")
+        st.subheader("Payback Progress Over Time")
         months = [m / 12 for m in range(1, int(payback * 12) + 2)]
         cumulative_savings = [annual_savings * (m / 12) for m in range(1, int(payback * 12) + 2)]
         capex_line = [capex] * len(months)
@@ -116,11 +121,15 @@ if st.button("Calculate Results"):
     else:
         st.warning("Payback period is infinite — savings never recover CAPEX.")
 
-    st.subheader("Fuel & CO₂ Savings")
+    st.subheader("Fuel & CO₂ Comparison")
+    initial_daily = 104
+    new_daily = initial_daily - fuel_saved_tpd
+    co2_initial = initial_daily * co2_factor
+    co2_new = new_daily * co2_factor
     fig2, ax2 = plt.subplots()
-    bars = [original_consumption_tpd, fuel_saved_tpd, co2_saved_tonnes]
-    labels = ['Original Fuel Use (t/d)', 'Fuel Saved (t/d)', 'CO₂ Saved (t/d)']
-    ax2.bar(labels, bars, color=['gray', 'green', 'blue'])
+    bars = [initial_daily, new_daily, co2_initial, co2_new]
+    labels = ['Initial Fuel Use', 'Post-BESS Fuel Use', 'Initial CO₂', 'Post-BESS CO₂']
+    ax2.bar(labels, bars, color=['gray', 'green', 'blue', 'cyan'])
     for i, val in enumerate(bars):
         ax2.text(i, val + 0.5, f"{val:.1f}", ha='center')
     ax2.set_ylabel("Tonnes per Day")
