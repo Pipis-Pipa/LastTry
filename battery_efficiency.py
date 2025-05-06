@@ -40,13 +40,11 @@ def calculate_eexi(p_me, sfoc_me, cf, v_ref, dwt, eexi_ref):
     attained = numerator / denominator if denominator > 0 else 0
     return attained, attained <= eexi_ref
 
-def estimate_savings_percent_model(original_consumption_tpd, saving_percent, fuel_price_per_tonne):
-    daily_savings = original_consumption_tpd * (saving_percent / 100)
-    annual_savings_tonnes = daily_savings * 300
-    cost_savings = annual_savings_tonnes * fuel_price_per_tonne
-    return daily_savings, annual_savings_tonnes, cost_savings
+# User-controllable inputs
+aux_daily_consumption = st.number_input("Auxiliary Engine Daily Fuel Consumption (tonnes)", value=12.8)
+saved_percent = st.number_input("Fuel Saving Percentage from BESS (%)", value=10.0)
+fuel_saved_tpd = aux_daily_consumption * (saved_percent / 100)
 
-# Inputs
 battery_energy_kwh = st.number_input("Battery Energy (kWh/day)", value=1200)
 sfoc_tonnes_per_kwh = st.number_input("SFOC (tonnes/kWh)", value=0.00022, format="%f")
 fuel_energy_density = st.number_input("Fuel Energy Density (MJ/tonne)", value=42700)
@@ -67,10 +65,7 @@ v_ref = st.number_input("Reference Speed (knots)", value=18.5)
 eexi_ref = st.number_input("IMO Reference EEXI", value=16.5)
 
 original_consumption_tpd = st.number_input("Original Fuel Consumption (tonnes/day)", value=104.0)
-
-# Input values
-fuel_saved_tpd = 1.28
-initial_fuel_consumed_annual = 104 * 300  # 104 t/day baseline
+initial_fuel_consumed_annual = original_consumption_tpd * 300
 new_fuel_consumed_annual = initial_fuel_consumed_annual - (fuel_saved_tpd * 300)
 
 if st.button("Calculate Results"):
@@ -113,12 +108,22 @@ if st.button("Calculate Results"):
         ax1.set_ylabel("USD")
         ax1.set_title("Payback Over Time")
         ax1.legend()
-        st.pyplot(fig1)
+        st.session_state['fig1'] = fig1
     else:
         st.warning("Payback period is infinite — savings never recover CAPEX.")
 
+    st.subheader("Energy Efficiency Existing Ship Index (EEXI)")
+    st.write(f"Attained EEXI: {eexi:.2f} gCO₂/ton·nm")
+    st.write(f"IMO Compliant: {'Yes' if compliance else 'No'}")
+
+    st.subheader("Fuel & Cost Savings Estimate (Based on Actual Saved Fuel)")
+    st.write(f"Daily Fuel Savings: {fuel_saved_tpd:.2f} tonnes")
+    st.write(f"Annual Fuel Savings: {fuel_saved_tpd * 300:.2f} tonnes")
+    st.write(f"Estimated Annual Cost Savings: ${fuel_saved_tpd * 300 * fuel_price:,.2f}")
+
+    # Graphs shown at end
     st.subheader("Fuel & CO₂ Comparison")
-    initial_daily = 104
+    initial_daily = original_consumption_tpd
     new_daily = initial_daily - fuel_saved_tpd
     co2_initial = initial_daily * co2_factor
     co2_new = new_daily * co2_factor
@@ -141,16 +146,12 @@ if st.button("Calculate Results"):
     ax3.set_ylabel("gCO₂/ton·nm")
     st.pyplot(fig3)
 
-    st.subheader("Energy Efficiency Existing Ship Index (EEXI)")
-    st.write(f"Attained EEXI: {eexi:.2f} gCO₂/ton·nm")
-    st.write(f"IMO Compliant: {'Yes' if compliance else 'No'}")
-
-    st.subheader("Fuel & Cost Savings Estimate (Based on Actual Saved Fuel)")
-    st.write(f"Daily Fuel Savings: {fuel_saved_tpd:.2f} tonnes")
-    st.write(f"Annual Fuel Savings: {fuel_saved_tpd * 300:.2f} tonnes")
-    st.write(f"Estimated Annual Cost Savings: ${fuel_saved_tpd * 300 * fuel_price:,.2f}")
+    if 'fig1' in st.session_state:
+        st.subheader("Payback Progress Over Time")
+        st.pyplot(st.session_state['fig1'])
 
 st.markdown("---")
 st.markdown("**MAR 8088 - Group Project - Team A**")
+
 
 
