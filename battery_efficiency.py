@@ -98,12 +98,12 @@ if st.button("Calculate Results"):
     if payback != float('inf'):
         st.write(f"Payback Period: {payback:.2f} years")
         st.subheader("Payback Progress Over Time")
-        years = list(range(1, int(payback) + 2))
-        cumulative_savings = [annual_savings * y for y in years]
-        capex_line = [capex] * len(years)
+        months = [m / 12 for m in range(1, int(payback * 12) + 2)]
+        cumulative_savings = [annual_savings * (m / 12) for m in range(1, int(payback * 12) + 2)]
+        capex_line = [capex] * len(months)
         fig1, ax1 = plt.subplots()
-        ax1.plot(years, cumulative_savings, label='Cumulative Savings')
-        ax1.plot(years, capex_line, '--', label='CAPEX')
+        ax1.plot(months, cumulative_savings, label='Cumulative Savings')
+        ax1.plot(months, capex_line, '--', label='CAPEX')
         ax1.set_xlabel("Years")
         ax1.set_ylabel("USD")
         ax1.set_title("Payback Over Time")
@@ -137,3 +137,4 @@ if st.button("Calculate Results"):
 
 st.markdown("---")
 st.markdown("**MAR 8088 - Group Project - Team A**")
+
