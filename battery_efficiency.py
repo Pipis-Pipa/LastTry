@@ -1,13 +1,12 @@
 import streamlit as st
 import matplotlib.pyplot as plt
 
-def calculate_bess_efficiency(battery_energy_kwh, sfoc_tonnes_per_kwh, fuel_energy_density_mj_per_tonne, co2_emission_factor_tonnes_per_tonnefuel):
-    fuel_saved_tonnes = battery_energy_kwh * sfoc_tonnes_per_kwh
-    energy_saved_mj = fuel_saved_tonnes * fuel_energy_density_mj_per_tonne
-    co2_saved_tonnes = fuel_saved_tonnes * co2_emission_factor_tonnes_per_tonnefuel
+def calculate_bess_efficiency(fuel_saved_tpd, fuel_energy_density_mj_per_tonne, co2_emission_factor_tonnes_per_tonnefuel, battery_energy_kwh):
+    energy_saved_mj = fuel_saved_tpd * fuel_energy_density_mj_per_tonne
+    co2_saved_tonnes = fuel_saved_tpd * co2_emission_factor_tonnes_per_tonnefuel
     battery_energy_mj = battery_energy_kwh * 3.6
     efficiency_ratio = energy_saved_mj / battery_energy_mj if battery_energy_mj > 0 else 0
-    return fuel_saved_tonnes, energy_saved_mj, co2_saved_tonnes, efficiency_ratio
+    return fuel_saved_tpd, energy_saved_mj, co2_saved_tonnes, efficiency_ratio
 
 def calculate_cii(fc_j_tonnes, cf_j, dwt, distance_nm):
     m = fc_j_tonnes * 1000 * cf_j
@@ -43,10 +42,9 @@ def calculate_eexi(p_me, sfoc_me, cf, v_ref, dwt, eexi_ref):
 # User-controllable inputs
 aux_daily_consumption = st.number_input("Auxiliary Engine Daily Fuel Consumption (tonnes)", value=12.8)
 saved_percent = st.number_input("Fuel Saving Percentage from BESS (%)", value=10.0)
-fuel_saved_tpd = aux_daily_consumption * (saved_percent / 100)
+fuel_saved_tpd = st.number_input("Daily Fuel Saved (tonnes)", value=aux_daily_consumption * (saved_percent / 100))
 
 battery_energy_kwh = st.number_input("Battery Energy (kWh/day)", value=1200)
-sfoc_tonnes_per_kwh = st.number_input("SFOC (tonnes/kWh)", value=0.00022, format="%f")
 fuel_energy_density = st.number_input("Fuel Energy Density (MJ/tonne)", value=42700)
 co2_factor = st.number_input("CO₂ Factor (tCO₂/t fuel)", value=3.17)
 
@@ -70,7 +68,7 @@ new_fuel_consumed_annual = initial_fuel_consumed_annual - (fuel_saved_tpd * 300)
 
 if st.button("Calculate Results"):
     fuel_saved_tonnes, energy_saved_mj, co2_saved_tonnes, eff_ratio = calculate_bess_efficiency(
-        battery_energy_kwh, sfoc_tonnes_per_kwh, fuel_energy_density, co2_factor)
+        fuel_saved_tpd, fuel_energy_density, co2_factor, battery_energy_kwh)
 
     initial_cii = calculate_cii(initial_fuel_consumed_annual, co2_factor, dwt, distance_nm)
     new_cii = calculate_cii(new_fuel_consumed_annual, co2_factor, dwt, distance_nm)
@@ -94,7 +92,6 @@ if st.button("Calculate Results"):
     st.write(f"Annual Net Savings (after OPEX): ${annual_savings:,.2f}")
     if payback != float('inf'):
         st.write(f"Payback Period: {payback:.2f} years")
-        st.subheader("Payback Progress Over Time")
         months = [m / 12 for m in range(1, int(payback * 12) + 2)]
         cumulative_savings = [annual_savings * (m / 12) for m in range(1, int(payback * 12) + 2)]
         capex_line = [capex] * len(months)
@@ -108,7 +105,7 @@ if st.button("Calculate Results"):
         ax1.set_ylabel("USD")
         ax1.set_title("Payback Over Time")
         ax1.legend()
-        st.session_state['fig1'] = fig1
+        st.pyplot(fig1)
     else:
         st.warning("Payback period is infinite — savings never recover CAPEX.")
 
@@ -116,12 +113,11 @@ if st.button("Calculate Results"):
     st.write(f"Attained EEXI: {eexi:.2f} gCO₂/ton·nm")
     st.write(f"IMO Compliant: {'Yes' if compliance else 'No'}")
 
-    st.subheader("Fuel & Cost Savings Estimate (Based on Actual Saved Fuel)")
+    st.subheader("Fuel & Cost Savings Estimate")
     st.write(f"Daily Fuel Savings: {fuel_saved_tpd:.2f} tonnes")
     st.write(f"Annual Fuel Savings: {fuel_saved_tpd * 300:.2f} tonnes")
     st.write(f"Estimated Annual Cost Savings: ${fuel_saved_tpd * 300 * fuel_price:,.2f}")
 
-    # Graphs shown at end
     st.subheader("Fuel & CO₂ Comparison")
     initial_daily = original_consumption_tpd
     new_daily = initial_daily - fuel_saved_tpd
@@ -145,10 +141,6 @@ if st.button("Calculate Results"):
         ax3.text(bar.get_x() + bar.get_width() / 2, yval + 0.1, f"{yval:.2f}", ha='center')
     ax3.set_ylabel("gCO₂/ton·nm")
     st.pyplot(fig3)
-
-    if 'fig1' in st.session_state:
-        st.subheader("Payback Progress Over Time")
-        st.pyplot(st.session_state['fig1'])
 
 st.markdown("---")
 st.markdown("**MAR 8088 - Group Project - Team A**")
