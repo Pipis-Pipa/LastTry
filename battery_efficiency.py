@@ -1,7 +1,78 @@
 import streamlit as st
 import matplotlib.pyplot as plt
 
-...  # [Omitted unchanged function definitions for brevity]
+def calculate_bess_efficiency(battery_energy_kwh, sfoc_tonnes_per_kwh, fuel_energy_density_mj_per_tonne, co2_emission_factor_tonnes_per_tonnefuel):
+    fuel_saved_tonnes = battery_energy_kwh * sfoc_tonnes_per_kwh
+    energy_saved_mj = fuel_saved_tonnes * fuel_energy_density_mj_per_tonne
+    co2_saved_tonnes = fuel_saved_tonnes * co2_emission_factor_tonnes_per_tonnefuel
+    battery_energy_mj = battery_energy_kwh * 3.6
+    efficiency_ratio = energy_saved_mj / battery_energy_mj if battery_energy_mj > 0 else 0
+    return fuel_saved_tonnes, energy_saved_mj, co2_saved_tonnes, efficiency_ratio
+
+def calculate_cii(fc_j_tonnes, cf_j, dwt, distance_nm):
+    m = fc_j_tonnes * 1000 * cf_j
+    w = dwt * distance_nm
+    cii = m / w if w > 0 else 0
+    return cii
+
+def get_cii_rating(cii):
+    if cii < 4:
+        return "A"
+    elif cii < 6:
+        return "B"
+    elif cii < 9:
+        return "C"
+    elif cii < 12:
+        return "D"
+    else:
+        return "E"
+
+def calculate_roi(fuel_saved_tonnes_per_day, fuel_price_per_tonne, capex, opex_per_year):
+    daily_net_savings = (fuel_saved_tonnes_per_day * fuel_price_per_tonne) - (opex_per_year / 300)
+    if daily_net_savings <= 0:
+        return 0, float('inf')
+    annual_savings = daily_net_savings * 300
+    payback_years = capex / annual_savings
+    return annual_savings, payback_years
+
+def calculate_eexi(p_me, sfoc_me, cf, v_ref, dwt, eexi_ref):
+    numerator = p_me * sfoc_me * cf
+    denominator = v_ref * dwt
+    attained_eexi = numerator / denominator if denominator > 0 else 0
+    is_compliant = attained_eexi <= eexi_ref
+    return attained_eexi, is_compliant
+
+def estimate_savings_percent_model(original_consumption_tpd, saving_percent, fuel_price_per_tonne):
+    daily_savings = original_consumption_tpd * (saving_percent / 100)
+    annual_savings_tonnes = daily_savings * 300
+    cost_savings = annual_savings_tonnes * fuel_price_per_tonne
+    return daily_savings, annual_savings_tonnes, cost_savings
+
+# Streamlit Inputs
+st.title("Battery Efficiency & IMO Performance Calculator")
+
+battery_energy_kwh = st.number_input("Battery Energy (kWh/day)", value=1200)
+sfoc_tonnes_per_kwh = st.number_input("SFOC (tonnes/kWh)", value=0.00022, format="%f")
+fuel_energy_density = st.number_input("Fuel Energy Density (MJ/tonne)", value=42700)
+co2_factor = st.number_input("CO₂ Factor (tCO₂/t fuel)", value=3.17)
+
+fuel_consumed_annual = st.number_input("Annual Fuel Consumption (tonnes)", value=31200)
+dwt = st.number_input("Deadweight (DWT)", value=61614)
+distance_nm = st.number_input("Annual Distance Sailed (NM)", value=100000.0)
+
+fuel_saved_tpd = st.number_input("Fuel Saved per Day (tonnes)", value=10.4)
+fuel_price = st.number_input("Fuel Price (USD/tonne)", value=601.0)
+capex = st.number_input("CAPEX (USD)", value=800000)
+opex = st.number_input("OPEX/year (USD)", value=12000)
+
+p_me = st.number_input("Main Engine Power (kW)", value=23000)
+sfoc_me = st.number_input("Main Engine SFOC (g/kWh)", value=170)
+cf_eexi = st.number_input("Fuel CO₂ Factor (g/g)", value=3.114)
+v_ref = st.number_input("Reference Speed (knots)", value=18.5)
+eexi_ref = st.number_input("IMO Reference EEXI", value=16.5)
+
+saving_percent = st.slider("Fuel Saving Percentage (Estimate)", min_value=0, max_value=20, value=10)
+original_consumption_tpd = st.number_input("Original Fuel Consumption (tonnes/day)", value=104.0)
 
 if st.button("Calculate Results"):
     fuel_saved_tonnes, energy_saved_mj, co2_saved_tonnes, eff_ratio = calculate_bess_efficiency(
