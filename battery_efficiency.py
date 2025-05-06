@@ -66,7 +66,6 @@ cf_eexi = st.number_input("Fuel CO₂ Factor (g/g)", value=3.114)
 v_ref = st.number_input("Reference Speed (knots)", value=18.5)
 eexi_ref = st.number_input("IMO Reference EEXI", value=16.5)
 
-saving_percent = st.slider("Fuel Saving Percentage (Estimate)", min_value=0, max_value=20, value=10)
 original_consumption_tpd = st.number_input("Original Fuel Consumption (tonnes/day)", value=104.0)
 
 # Input values
@@ -85,9 +84,6 @@ if st.button("Calculate Results"):
 
     annual_savings, payback = calculate_roi(fuel_saved_tpd, fuel_price, capex, opex)
     eexi, compliance = calculate_eexi(p_me, sfoc_me, cf_eexi, v_ref, dwt, eexi_ref)
-
-    daily_savings, annual_savings_tonnes, cost_savings = estimate_savings_percent_model(
-        original_consumption_tpd, saving_percent, fuel_price)
 
     st.subheader("Battery Efficiency")
     st.write(f"Fuel Saved: {fuel_saved_tonnes:.2f} tonnes/day")
@@ -149,11 +145,12 @@ if st.button("Calculate Results"):
     st.write(f"Attained EEXI: {eexi:.2f} gCO₂/ton·nm")
     st.write(f"IMO Compliant: {'Yes' if compliance else 'No'}")
 
-    st.subheader("Percent-Based Fuel & Cost Savings Estimate")
-    st.write(f"Daily Fuel Savings: {daily_savings:.2f} tonnes")
-    st.write(f"Annual Fuel Savings: {annual_savings_tonnes:.2f} tonnes")
-    st.write(f"Estimated Annual Cost Savings: ${cost_savings:,.2f}")
+    st.subheader("Fuel & Cost Savings Estimate (Based on Actual Saved Fuel)")
+    st.write(f"Daily Fuel Savings: {fuel_saved_tpd:.2f} tonnes")
+    st.write(f"Annual Fuel Savings: {fuel_saved_tpd * 300:.2f} tonnes")
+    st.write(f"Estimated Annual Cost Savings: ${fuel_saved_tpd * 300 * fuel_price:,.2f}")
 
 st.markdown("---")
 st.markdown("**MAR 8088 - Group Project - Team A**")
+
 
